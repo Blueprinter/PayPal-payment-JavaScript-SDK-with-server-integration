@@ -1,0 +1,6 @@
+<!-- This code uses the client side JavaScript PayPal SDK -->
+
+<div style="text-align: center;">
+  <div id="paypal-button-container"></div>
+</div>
+
