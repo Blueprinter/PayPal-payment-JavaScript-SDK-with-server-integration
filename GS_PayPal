@@ -1,0 +1,276 @@
+function payPalSettings_() {
+  //see: https://developer.paypal.com/docs/business/javascript-sdk/javascript-sdk-reference/#createorder
+  return {
+    intent:'CAPTURE',//The PayPal JavaScript SDK defaults to capture if not set 
+    //but for purposes of explicitly making it clear what the code is doing - it is being set here -
+    //The Capture setting results in the capturing of funds immediately after the buyer approves the purchase -
+    
+    custom_id:"abc123",//You can add a custom value to pass to PayPal
+    purchase_units:[
+      {"description":"Emails Director Gold",
+       "amount":{
+         "currency_code":"USD",
+         "value":"2.95",
+         }
+      }
+    ],
+  }
+}
+
+function getCredentials_() {
+  var CLIENT_Live,Paypal_Client_Test,PayPalSecret_Test,rtrnObj,SECRET_Live;
+  
+  rtrnObj = {};
+  
+  Paypal_Client_Test = 'abc123';//You must get this from your PayPal account
+  PayPalSecret_Test = '321cba';
+  
+  //For testing comment out the live credentials
+  //CLIENT_Live = 'put it here';//You must get this from your PayPal account
+  //SECRET_Live = 'put it here';
+  
+  rtrnObj.client = CLIENT_Live ? CLIENT_Live : Paypal_Client_Test;//If the live credential is available then use it
+  rtrnObj.secret = SECRET_Live ? SECRET_Live : PayPalSecret_Test;
+  
+  return rtrnObj;
+}
+
+
+/* This code is for making calls to PayPal from the SERVER 
+   This server code must work together with the client side code 
+*/
+
+//To see the equivalent of this code go to:
+//https://developer.paypal.com/docs/business/checkout/server-side-api-calls/create-order#1-add-server-code
+//which is the Add Server Code section and show the JavaScript code
+
+
+function captureThePayment(po) {
+try{
+  var accessTkn,capture,options,PayPal_Capture_API,rCode;
+  /*
+    po.orderId - the order ID
+  */
+  
+  /*
+    See documentation at:
+    https://developer.paypal.com/docs/checkout/reference/server-integration/capture-transaction/
+  
+  */
+  
+  //Logger.log('po 61',po)
+  
+  accessTkn = getAuthTkn_();
+
+  PayPal_Capture_API = 'https://api.sandbox.paypal.com/v2/checkout/orders/' + po.orderId + '/capture';
+  //Logger.log('PayPal_Capture_API',PayPal_Capture_API)
+  
+  options = {};
+  
+  options.muteHttpExceptions = true;
+  options.method = 'post';
+  options.headers = {
+    //"Accept":"application/json",
+    "Authorization": "Bearer " + accessTkn
+  }
+  options.contentType = 'application/json';//This needs to be used or it doesnt work
+  
+  capture = UrlFetchApp.fetch(PayPal_Capture_API,options);//Call PayPal to capture the order
+  //Logger.log('capture.getResponseCode() 77',capture.getResponseCode())
+  //Logger.log('capture 85',capture)
+  //Logger.log('capture.error',capture.error)
+
+  rCode = capture.getResponseCode();
+  
+  if (rCode !== 200 && rCode !== 201) {
+    
+    //Logger.log('capture.getContentText',capture.getContentText)
+    throw new Error("Error capturing the payment: " + rCode);
+  }
+  
+  //Logger.log('capture.getContentText',capture.getContentText)
+  
+  /*
+    There is no response - just a response code
+    To get order detail another request must be made to PayPal
+  */
+
+  
+  // Do your own custom processing
+
+  return true;//The capture option doesnt return anything but a response code - it doesnt return order details -
+  //to get order details you would need to use the base API url with just the order number on the end-
+  //See https://developer.paypal.com/docs/checkout/reference/server-integration/get-transaction/
+
+}catch(e){
+  //Logger.log('message',e.message)
+  //Logger.log('stack',e.stack)
+}
+}
+
+
+function createA_PayPalOrder() {
+try{
+  var authTkn,options,order,paySets,payload,response;
+
+  authTkn = getAuthTkn_();
+
+  //2 Set up your server to receive a call from the client 
+
+  PAYPAL_ORDER_API = 'https://api.sandbox.paypal.com/v2/checkout/orders/';//Must be changed for live mode
+  
+  // 3 Call PayPal to set up a transaction
+
+  options = {};
+  
+  paySets = payPalSettings_();
+  //console.log('paySets 121' + paySets)
+  
+  
+  options.muteHttpExceptions = true;//
+  options.method = 'post';
+  options.headers = {
+    "Accept":"application/json",
+    "Authorization": "Bearer " + authTkn
+  }
+  options.contentType = 'application/json';
+  options.payload = JSON.stringify(paySets);
+  
+  response = UrlFetchApp.fetch(PAYPAL_ORDER_API,options);//Call PayPal to set up a transaction
+  //console.log('response.getResponseCode() 131' + response.getResponseCode())
+  
+  /*
+    The response returned should look like:
+    {"id":"abc123",
+    "status":"CREATED",
+    "links":[{"href":"https://api.sandbox.paypal.com/v2/checkout/orders/abc123",
+    "rel":"self",
+    "method":"GET"},
+    {"href":"https://www.sandbox.paypal.com/checkoutnow?token=abc123",
+    "rel":"approve",
+    "method":"GET"},
+    {"href":"https://api.sandbox.paypal.com/v2/checkout/orders/abc123",
+    "rel":"update","method":"PATCH"},
+    {"href":"https://api.sandbox.paypal.com/v2/checkout/orders/abc123/capture",
+    "rel":"capture",
+    "method":"POST"}]}
+  
+  */
+  
+  
+  //4 Handle any errors from the call
+  if (response.getResponseCode() !== 201) {
+    //console.log('response.getContentText() 135' + response.getContentText())
+    
+    //console.log(response);
+    return "error";
+  }
+
+  order = response.getContentText();
+  //order = JSON.parse(order);
+  
+  //console.log('order.id 166' + order.id)
+  //5 Return a successful response to the client
+  return order;
+}catch(e){
+  //console.log('message' + e.message)
+  //console.log('stack' + e.stack)
+}
+}
+
+
+function getAuthTkn_() {
+try{
+  var auth,basicAuth,cacheService,creds,credentialClient,credentialSecret,keyConcat,options,payPalToken,PAYPAL_OAUTH_API,paySets,
+      payload,response,tkn;
+
+  /*Log into your developer dashboard: https://www.paypal.com/signin?returnUri=https%3A%2F%2Fdeveloper.paypal.com%2Fdeveloper%2Fapplications
+    Note that the sandbox (for testing) and the live modes both have their own apps - So I would create different app names for
+    each one -
+    If you have not created an app then create an app
+    If you need to create an app then you will need to generate the credentials
+    If you already have an app and credentials then you can use those
+    When getting your credentials the first thing you must do is choose either sandbox or live -
+  */
+  
+  cacheService = CacheService.getDocumentCache();
+  
+  try{
+    payPalToken = cacheService.get("authTkn");
+  }catch(e){
+  
+  }
+  
+  if (payPalToken) {//There is already a PayPal auth token generated and in Cache
+    return payPalToken;
+  }
+  
+  creds = getCredentials_();
+  
+  credentialClient = creds.client;
+  credentialSecret = creds.secret;
+  
+  PAYPAL_OAUTH_API = 'https://api.sandbox.paypal.com/v1/oauth2/token/';//1B Use the PayPal APIs which are called with the following URLs -
+
+  keyConcat = credentialClient + ':' + credentialSecret;//concatenate the client and secret credentials
+  
+  basicAuth = Utilities.base64Encode(keyConcat);//Base 64 encode
+  
+  options = {};
+  payload = {};
+
+  payload.grant_type = "client_credentials";
+  
+  options.muteHttpExceptions = true;//
+  options.method = 'post';
+  options.headers = {
+    "Accept":"application/json",
+    "Authorization": "Basic " + basicAuth
+  }
+  options.payload = payload;
+  
+  response = UrlFetchApp.fetch(PAYPAL_OAUTH_API, options);//1C Get an access token from the PayPal API
+  //Logger.log('response.getResponseCode() 80',response.getResponseCode())
+  
+  auth = response.getContentText();
+  //Logger.log('auth 83',auth)
+  
+  /*
+    The response returned should look like this:
+    {"scope":"https://uri.paypal.com/services/invoicing 
+      https://uri.paypal.com/services/disputes/read-buyer 
+      https://uri.paypal.com/services/payments/realtimepayment 
+      https://uri.paypal.com/services/disputes/update-seller 
+      https://uri.paypal.com/services/payments/payment/authcapture openid 
+      https://uri.paypal.com/services/disputes/read-seller 
+      https://uri.paypal.com/services/payments/refund 
+      https://api.paypal.com/v1/vault/credit-card https://api.paypal.com/v1/payments/.* 
+      https://uri.paypal.com/payments/payouts https://api.paypal.com/v1/vault/credit-card/.* 
+      https://uri.paypal.com/services/subscriptions 
+      https://uri.paypal.com/services/applications/webhooks",
+      "access_token":"abc123",
+      "token_type":"Bearer",
+      "app_id":"APP-abc123",
+      "expires_in":32400,
+      "nonce":"2020-12-09T01:07:abc123"}
+  */
+  
+  if (!auth) {
+    throw new Error("Authorization information not retrieved from PayPal");
+  }
+
+  auth = JSON.parse(auth);
+  //Logger.log('auth',auth)
+  //Logger.log('auth.access_token 90',auth.access_token)
+  
+  tkn  = auth.access_token;
+  cacheService.put("authTkn", tkn, 180);//Save in cache for 3 minutes
+  return tkn;
+
+}catch(e){
+  Logger.log('message',e.message)
+  Logger.log('stack',e.stack)
+  console.log(e)
+}
+}
+
