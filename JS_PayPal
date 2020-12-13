@@ -1,0 +1,178 @@
+<!--
+  Required files:
+  This code works together with the server code - 
+  
+  This PayPal payment system uses both the PayPal javascript SDK AND server side PayPal API calls -  
+  This PayPal payment system uses Smart Payment Buttons - See: https://developer.paypal.com/docs/checkout/
+  
+  The two most important documentation links are:
+  https://developer.paypal.com/docs/checkout/integrate/
+  https://developer.paypal.com/docs/checkout/reference/server-integration/set-up-transaction/
+  
+  For configuration settings there is information at:
+  https://developer.paypal.com/docs/business/javascript-sdk/javascript-sdk-reference/
+  
+  Note that this PayPal implementation does NOT require there to be a button definition in your PayPal settings -
+  
+  The PayPal JavaScript client side SDK is newer than the checkout.js
+  See this Link: https://developer.paypal.com/docs/archive/checkout/how-to/server-integration/
+  For an overview of the PayPal checkout with server integration -
+
+  It is very important to understand the "sandbox" and the "production" settings -
+  There are mutliple settings that must all be for either "sandbox" or "production"
+  If you mix "sandbox" and "production" credentials and API links then your code will not work
+  and the error messages may not help you to understand what the real problem is -
+  
+  Anything to do with "sandbox" is for testing purposes -
+  "production" is for accepting live payments from customers -
+  
+  The terminology that PayPal uses for the credentials is:
+  client id - The client side credential key
+  secret - The server side credential key
+  
+  Credentials need to be in three different settings-
+  1 - Client side script tag - client id
+  2 - Server side variable - client id
+  3 - Server side variable - secret
+  
+  To test your PayPal code you must do multiple things:
+  1 - Create sandbox (test) client and secret credentials
+  2 - use a special buyer PayPal account:
+      https://developer.paypal.com/docs/checkout/integrate/
+-->
+
+<script src="https://www.paypal.com/sdk/js?client-id= YOUR CLIENT ID HERE - MAKE SURE IT MATCHES EITHER SANDBOX OR PRODUCTION &currency=USD"></script>
+
+<script>               
+
+window.payPalPaymentComplete = function(orderId) {
+
+  showModalMessageBox("Payment is complete","COMPLETE!");
+  
+}
+
+window.backToStartPay = function() {
+  //Return to the dialog to buy something
+  
+}
+
+function capture_the_order(po) {
+  //Use the google.script.run API to call the server
+  //This is specific to Google Apps Script
+  return new Promise (function (resolve,reject) {
+    google.script.run
+      .withSuccessHandler (function (result) {
+        //cl('result 62' + result)
+        resolve (result);//What resolve does is return the result from the server back to the FIRST anonymous function in the "then" part
+      })
+      .withFailureHandler (function (error) {
+        //cl('error 66' + error)
+        reject (error);
+      })
+      .captureThePayment(po);//Call the server to create a PayPal order
+    })
+}
+
+
+function iWillWaitForU() {
+  //Use the google.script.run API to call the server
+  //This is specific to Google Apps Script
+  return new Promise (function (resolve,reject) {
+    google.script.run
+      .withSuccessHandler (function (result) {
+        //cl('result 62' + result)
+        resolve (result);//What resolve does is return the result from the server back to the FIRST anonymous function in the "then" part
+      })
+      .withFailureHandler (function (error) {
+        //cl('error 66' + error)
+        reject (error);
+      })
+      .createA_PayPalOrder();//Call the server to create a PayPal order
+    })
+}
+
+function initPayPalButton() {
+  /*
+    This is a server side integration of the client side PayPal JavaScript SDK -
+    The createOrder method makes a call to the PayPal API -
+    The PayPal documentation uses the fetch() method but Apps Script uses google.script.run
+    to make a server call so the PayPal example must be modified -
+  */
+
+  paypal.Buttons({
+    style: {
+      shape: 'rect',
+      color: 'gold',
+      layout: 'vertical',
+      label: 'paypal',
+    },
+    
+    createOrder : function() {
+      //console.log('createOrder 93' + 'order')
+      return iWillWaitForU()// Call the server code to complete the payment transaction
+        //This both creates and executes the transaction
+        .then(function(response) {
+          //console.log('response 89' + response)
+          return JSON.parse(response);
+          //window.PayPalOrderId = orderInfo.id;
+          //return orderInfo.id;
+          },//THERE MUST BE A COMMA HERE!!!!  This is a list of functions seperated by a comma
+          function (error) {//Because this is the second function this is what gets called for an error
+            showModalMessageBox("There was an error in the PayPal button!","ERROR!");
+            //console.log(error);
+            return "Error";
+        }).then(
+           function(orderObj){
+           //console.log('orderObj.orderID' + orderObj.id)
+          return orderObj.id;
+        });
+    },
+    
+    onApprove: function() {
+      //console.log('onapprove ran')
+      startSpinner();
+  
+      backToStartPay();
+     
+      capture_the_order({"which":"capture","orderId":window.PayPalOrderId})
+        .then(
+  
+        function(hadSuccess) {
+          //cl('hadSuccess 89',hadSuccess)
+          if (hadSuccess) {
+            payPalPaymentComplete();
+            //console.log('Transaction completed !');
+            } else {
+            showModalMessageBox("There was an error getting the payment!","ERROR!");
+            //console.log(error);
+            stopSpinner();
+            }
+          },//THERE MUST BE A COMMA HERE!!!!  This is a list of functions seperated by a comma
+          function (error) {//Because this is the second function this is what gets called for an error
+            showModalMessageBox("There was an error getting the payment!","ERROR!");
+            //console.log(error);
+            stopSpinner();
+        })
+    },
+
+
+    onCancel: function (data, actions) {
+      // Show a cancel page or return to cart
+      showModalMessageBox('PayPal Session was cancelled',"CANCELLED!");
+      backToStartPay();
+    },
+    
+    onError: function(err) {
+      showModalMessageBox("There was an error in the PayPal button!","ERROR!");
+      //console.log(err);
+    }
+    
+  }).render('#paypal-button-container');//Render the PayPal button into the html element with id #paypal-button-container - 
+  //See HTML file - H_PayPal_New
+  
+}
+initPayPalButton();
+
+
+</script>
+
