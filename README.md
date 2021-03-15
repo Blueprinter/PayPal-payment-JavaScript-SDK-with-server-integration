@@ -29,9 +29,9 @@ Obviously, you need a PayPal account, and you need to create credentials for the
  ## Program Flow
 
  * HTML loads with your payment system html
- * Script tag with <script src="https://www.paypal.com/sdk/js?client-id= xxxx loads the PayPal client side SDK with your client ID
- * The script tag must be in the <head> tag of the HTML that is opened
- * In my system the client id is looked up on the server using a scriptlet.  So there needs to be a function in a “gs” file with settings
+   * Script tag with <script src="https://www.paypal.com/sdk/js?client-id= xxxx loads the PayPal client side SDK with your client ID  
+     * The script tag must be in the <head> tag of the HTML that is opened
+     * In my system the client id is looked up on the server using a scriptlet.  So there needs to be a function in a “gs” file with settings
  * When the HTML loads, some client side code also runs at the same time and the PayPal buttons are initialized and created.  You can have multiple different types of PayPal buttons that are for different payment types.  For example, “PayPal Pay later” and “Debit or Credit Card.”  So, the user has choices about how to pay.
  * The PayPal SDK creates buttons that are rendered into an html tag with the id attribute of “#paypal-button-container”
  * The code for the PayPal button initialization should be placed at the bottom to make sure that it only runs after the html tag with the id attribute of “#paypal-button-container” is loaded
