@@ -10,8 +10,8 @@ Much of the information needed is in the comments of the code.
 
 NOTE: To go "live" you must:
 
-Remove the word sandbox from the urls - See: https://developer.paypal.com/docs/paypal-plus/germany/integrate/test-and-go-live/#go-live  
-Use different client and secret credentials  
+ * Remove the word sandbox from the urls - See: https://developer.paypal.com/docs/paypal-plus/germany/integrate/test-and-go-live/#go-live  
+ * Use different client and secret credentials  
 
  # In-App PayPal system with server integration  
  ## Basic Requirements:  
@@ -44,3 +44,50 @@ Obviously, you need a PayPal account, and you need to create credentials for the
  * Your server code can save customer information to your customer database.
  * Client side handlers for canceling and errors will need your custom code.
 
+
+  The current PayPal payment system that I use, uses both the PayPal javascript SDK AND server side PayPal API calls -  
+  This PayPal payment system uses Smart Payment Buttons - See: https://developer.paypal.com/docs/checkout/
+  
+ * The two most important documentation links are:
+   * https://developer.paypal.com/docs/checkout/integrate/
+   * https://developer.paypal.com/docs/checkout/reference/server-integration/set-up-transaction/
+  
+  For configuration settings there is information at:
+  https://developer.paypal.com/docs/business/javascript-sdk/javascript-sdk-reference/
+  
+  Note that this PayPal implementation does NOT require there to be a button definition in your online PayPal settings in your PayPal account -  That doesn’t mean that there are button settings, but it’s put into your code.
+ 
+  PayPal has multiple different ways to set up a payment system, from basic to custom.
+  Trying to create a generic example that would be generally usable would be difficult.
+ 
+  The PayPal JavaScript client side SDK that I am using is newer than the checkout.js system.
+
+  For an overview of the PayPal checkout with server integration -
+  See this Link: https://developer.paypal.com/docs/archive/checkout/how-to/server-integration/
+
+  It is very important to understand the "sandbox" and the "production" settings -
+  There are multiple settings that must all be for either "sandbox" or "production"
+  If you mix "sandbox" and "production" credentials and API links then your code will not work
+  and the error messages may not help you to understand what the real problem is -
+  
+  Anything to do with "sandbox" is for testing purposes -
+  "production" is for accepting live payments from customers -
+  
+  The terminology that PayPal uses for the credentials is:
+  client id - The client side credential key
+  secret - The server side credential key
+  
+  Credentials need to be in three different settings-
+ 1 Client side script tag - client id
+ 2 Server side variable - client id
+ 3 Server side variable - secret
+  
+  To test your PayPal code you must do multiple things:
+  1 - Create sandbox (test) client and secret credentials
+  2 - use a special buyer PayPal account:
+      https://developer.paypal.com/docs/checkout/integrate/
+ 
+I think that there are advantages of using both the client side PayPal SDK to create the PayPal buttons,
+and the server side integration to complete the transaction.
+Your Apps Script server code can inform you of a payment, or log an error, 
+and of course server side code is not accessible to the browser.
